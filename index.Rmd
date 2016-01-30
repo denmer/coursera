@@ -1,22 +1,156 @@
 ---
-title: "Practical Machine Learning Course Project"
+title: "Practical Machine Learning Project"
 author: "Eugene Vakhrameyev"
-date: "Sunday, January 24, 2016"
+date: "Friday, January 29, 2016"
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+This is a Final Project for Course Practical Machine Learning.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+**Abstract**
+
+Weight Lifting Exercises Dataset.
+Data was gathered from sensors while experiment participants were performing weight lifting exercise. The task is to predict the manner in which they did the exercise.
+Target variable name is "classe". It has five possible values: "A","B","C","D" and "E". Class "A"" corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+Read more: http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises#ixzz3yeCpCFjo
+
+**Preparation Stepts**
+
+Given two datasets:  
+Training dataset - https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv  
+Testing dataset - https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+Training dataset was gathered from 4 groups of sensors:  
+1. Arm  
+2. Forearm  
+3. Belt  
+4. Dumbbell  
+<!-- See Figure 1.  -->
+Name of participant, time window and some other derived values (like min, max, avg, etc.) are included as well.
+
+<!--
+![Figure 1](K:\work\coursera\PracticalMachineLearning\on-body-sensing-schema-resized.png) 
+-->
+
+At the beginning we split pml_training into training and testing sets (for cross-validation purposes):
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+set.seed(333)
+library("caret")
+attach(pml.training)
+inTrain <-createDataPartition(classe, p=0.7,list=FALSE)
+training <- pml.training[inTrain,]
+testing <- pml.training[-inTrain,]
+```
+When we look at the head of pml_training data, we can notice that some variables have NA values. 
+
+It is important to understand how many observations of each variable have NA values, to take a decision how to deal with them. We can use the following code to extract this information:
+```{r}
+a <- ""
+for (i in 1:ncol(training))
+{
+print(paste(names(training[i]),mean(is.na(training[,i]))));
+}
+```
+This give us understanding that all variables, which have NA values, have less than 3 percent of observations with non-NA values. So we have 2 groups of varialbes here: one with 0 NA observations and second with 97.8% NA observations. This means we cannot use second group as predictors and need to remove them from both training and testing datasets.
+For this purposes we use the following simple chunk of code: 
+```
+a <- ""
+for (i in 1:ncol(training))
+{
+if(mean(is.na(training[,i]))==0) {a=paste(a,match(names(training[i]),names(training)),",");}
+}
+```
+Aftre its execution we have string "a" containing indexes of variables, which we need to leave for further processing:
+```{r}
+training <- training[c(1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 , 13 , 14 , 15 , 16 , 17 , 20 , 23 , 26 , 37 , 38 , 39 , 40 , 41 , 42 , 43 , 44 , 45 , 46 , 47 , 48 , 49 , 60 , 61 , 62 , 63 , 64 , 65 , 66 , 67 , 68 , 69 , 70 , 71 , 72 , 73 , 74 , 84 , 85 , 86 , 87 , 88 , 89 , 90 , 91 , 92 , 95 , 98 , 101 , 102 , 113 , 114 , 115 , 116 , 117 , 118 , 119 , 120 , 121 , 122 , 123 , 124 , 125 , 126 , 127 , 128 , 129 , 130 , 133 , 136 , 139 , 140 , 151 , 152 , 153 , 154 , 155 , 156 , 157 , 158 , 159 , 160)]
+testing <- testing[c(1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 , 13 , 14 , 15 , 16 , 17 , 20 , 23 , 26 , 37 , 38 , 39 , 40 , 41 , 42 , 43 , 44 , 45 , 46 , 47 , 48 , 49 , 60 , 61 , 62 , 63 , 64 , 65 , 66 , 67 , 68 , 69 , 70 , 71 , 72 , 73 , 74 , 84 , 85 , 86 , 87 , 88 , 89 , 90 , 91 , 92 , 95 , 98 , 101 , 102 , 113 , 114 , 115 , 116 , 117 , 118 , 119 , 120 , 121 , 122 , 123 , 124 , 125 , 126 , 127 , 128 , 129 , 130 , 133 , 136 , 139 , 140 , 151 , 152 , 153 , 154 , 155 , 156 , 157 , 158 , 159 , 160)]
+```
+As a second step of preprocessing we use nearZeroVar function from caret:
+```{r}
+nzv <- nearZeroVar(training,saveMetrics = TRUE)
+training <- training[!nzv$nzv]
+nzv <- nearZeroVar(testing,saveMetrics = TRUE)
+testing <- testing[!nzv$nzv]
+```
+After that we can remove irrelevant variables. As its not a time series analysis, we can remove time data. Also user names and row IDs are not relevant in context of investigation. Thus we remove the first 6 variables.
+```{r cache=TRUE}
+testing <- testing[c(-1,-2,-3,-4,-5,-6)]
+training <- training[c(-1,-2,-3,-4,-5,-6)]
+```
+We use the Random Forest model for prediction. Since we have quite a lot of observations, we can decrease number of resampling iterations to 4 (to decreate model computation time):
 
 ```{r}
-summary(cars)
+library("randomForest")
+control <- trainControl(method="boot", number=4, repeats=4, allowParallel = TRUE)
+fitRf <- train(classe~., data=training, method="rf", trControl=control)
+fitRf
+```
+So we have got a Random Forest model with 52 predictors. Now we can predict and calculate accuracy on the testing dataset:
+```{r}
+rfPredict <- format(predict(fitRf, testing))
+confusionMatrix(rfPredict, testing$classe)
 ```
 
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
-plot(cars)
+**Cross Validation**
+For cross validation we set up seed to 1333 and p=0.6 
+```
+inTrain <-createDataPartition(classe, p=0.6,list=FALSE)
+```
+and repeat all steps. 
+```{r include=FALSE, echo=FALSE, results=FALSE, cache=TRUE}
+set.seed(1333)
+inTrain <-createDataPartition(classe, p=0.6,list=FALSE)
+training <- pml.training[inTrain,]
+testing <- pml.training[-inTrain,]
+training <- training[c(1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 , 13 , 14 , 15 , 16 , 17 , 20 , 23 , 26 , 37 , 38 , 39 , 40 , 41 , 42 , 43 , 44 , 45 , 46 , 47 , 48 , 49 , 60 , 61 , 62 , 63 , 64 , 65 , 66 , 67 , 68 , 69 , 70 , 71 , 72 , 73 , 74 , 84 , 85 , 86 , 87 , 88 , 89 , 90 , 91 , 92 , 95 , 98 , 101 , 102 , 113 , 114 , 115 , 116 , 117 , 118 , 119 , 120 , 121 , 122 , 123 , 124 , 125 , 126 , 127 , 128 , 129 , 130 , 133 , 136 , 139 , 140 , 151 , 152 , 153 , 154 , 155 , 156 , 157 , 158 , 159 , 160)]
+testing <- testing[c(1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 , 13 , 14 , 15 , 16 , 17 , 20 , 23 , 26 , 37 , 38 , 39 , 40 , 41 , 42 , 43 , 44 , 45 , 46 , 47 , 48 , 49 , 60 , 61 , 62 , 63 , 64 , 65 , 66 , 67 , 68 , 69 , 70 , 71 , 72 , 73 , 74 , 84 , 85 , 86 , 87 , 88 , 89 , 90 , 91 , 92 , 95 , 98 , 101 , 102 , 113 , 114 , 115 , 116 , 117 , 118 , 119 , 120 , 121 , 122 , 123 , 124 , 125 , 126 , 127 , 128 , 129 , 130 , 133 , 136 , 139 , 140 , 151 , 152 , 153 , 154 , 155 , 156 , 157 , 158 , 159 , 160)]
+nzv <- nearZeroVar(training,saveMetrics = TRUE)
+training <- training[!nzv$nzv]
+nzv <- nearZeroVar(testing,saveMetrics = TRUE)
+testing <- testing[!nzv$nzv]
+testing <- testing[c(-1,-2,-3,-4,-5,-6)]
+training <- training[c(-1,-2,-3,-4,-5,-6)]
+fitRf2 <- train(classe~., data=training, method="rf", trControl=control)
+fitRf2
+rfPredict2 <- format(predict(fitRf2, testing))
+```
+```{r}
+confusionMatrix(rfPredict2, testing$classe)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+And finally we setup seed to 2333 and p=0.65 and repeat steps.
+```{r include=FALSE, echo=FALSE, results=FALSE, cache=TRUE}
+set.seed(2333)
+inTrain <-createDataPartition(classe, p=0.65,list=FALSE)
+training <- pml.training[inTrain,]
+testing <- pml.training[-inTrain,]
+training <- training[c(1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 , 13 , 14 , 15 , 16 , 17 , 20 , 23 , 26 , 37 , 38 , 39 , 40 , 41 , 42 , 43 , 44 , 45 , 46 , 47 , 48 , 49 , 60 , 61 , 62 , 63 , 64 , 65 , 66 , 67 , 68 , 69 , 70 , 71 , 72 , 73 , 74 , 84 , 85 , 86 , 87 , 88 , 89 , 90 , 91 , 92 , 95 , 98 , 101 , 102 , 113 , 114 , 115 , 116 , 117 , 118 , 119 , 120 , 121 , 122 , 123 , 124 , 125 , 126 , 127 , 128 , 129 , 130 , 133 , 136 , 139 , 140 , 151 , 152 , 153 , 154 , 155 , 156 , 157 , 158 , 159 , 160)]
+testing <- testing[c(1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 , 13 , 14 , 15 , 16 , 17 , 20 , 23 , 26 , 37 , 38 , 39 , 40 , 41 , 42 , 43 , 44 , 45 , 46 , 47 , 48 , 49 , 60 , 61 , 62 , 63 , 64 , 65 , 66 , 67 , 68 , 69 , 70 , 71 , 72 , 73 , 74 , 84 , 85 , 86 , 87 , 88 , 89 , 90 , 91 , 92 , 95 , 98 , 101 , 102 , 113 , 114 , 115 , 116 , 117 , 118 , 119 , 120 , 121 , 122 , 123 , 124 , 125 , 126 , 127 , 128 , 129 , 130 , 133 , 136 , 139 , 140 , 151 , 152 , 153 , 154 , 155 , 156 , 157 , 158 , 159 , 160)]
+nzv <- nearZeroVar(training,saveMetrics = TRUE)
+training <- training[!nzv$nzv]
+nzv <- nearZeroVar(testing,saveMetrics = TRUE)
+testing <- testing[!nzv$nzv]
+testing <- testing[c(-1,-2,-3,-4,-5,-6)]
+training <- training[c(-1,-2,-3,-4,-5,-6)]
+fitRf3 <- train(classe~., data=training, method="rf", trControl=control)
+fitRf3
+rfPredict3 <- format(predict(fitRf3, testing))
+```
+```{r}
+confusionMatrix(rfPredict3, testing$classe)
+```
+
+Now we can calculate mean accuracy:
+```
+mean(c(0.9947,0.9904,0.9924))
+```
+**Predict on Testing Dataset**
+We see that the model is quite robust and the error rate is close to zero. Thus we can predict on pml_testing:
+```{r}
+targetPrediction <- format(predict(fitRf, pml.testing))
+targetPrediction
+```
+<!-- Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.-->
