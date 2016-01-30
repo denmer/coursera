@@ -93,7 +93,8 @@ rfPredict <- format(predict(fitRf, testing))
 confusionMatrix(rfPredict, testing$classe)
 ```
 
-**Cross Validation**
+**Cross Validation**  
+
 For cross validation we set up seed to 1333 and p=0.6 
 ```
 inTrain <-createDataPartition(classe, p=0.6,list=FALSE)
@@ -147,7 +148,9 @@ Now we can calculate mean accuracy:
 ```{r}
 mean(c(0.9947,0.9904,0.9924))
 ```
-**Predict on Testing Dataset**
+
+**Predict on Testing Dataset**  
+
 We see that the model is quite robust and the error rate is close to zero. Thus we can predict on pml_testing:
 ```{r}
 targetPrediction <- format(predict(fitRf, pml.testing))

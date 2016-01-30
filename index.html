@@ -318,7 +318,8 @@ confusionMatrix(rfPredict, testing$classe)</code></pre>
 ## Detection Rate         0.2845   0.1930   0.1732   0.1611   0.1830
 ## Detection Prevalence   0.2850   0.1941   0.1759   0.1621   0.1830
 ## Balanced Accuracy      0.9996   0.9981   0.9949   0.9911   0.9977</code></pre>
-<p><strong>Cross Validation</strong> For cross validation we set up seed to 1333 and p=0.6</p>
+<p><strong>Cross Validation</strong></p>
+<p>For cross validation we set up seed to 1333 and p=0.6</p>
 <pre><code>inTrain &lt;-createDataPartition(classe, p=0.6,list=FALSE)</code></pre>
 <p>and repeat all steps.</p>
 <pre class="r"><code>confusionMatrix(rfPredict2, testing$classe)</code></pre>
@@ -389,7 +390,8 @@ confusionMatrix(rfPredict, testing$classe)</code></pre>
 <p>Now we can calculate mean accuracy:</p>
 <pre class="r"><code>mean(c(0.9947,0.9904,0.9924))</code></pre>
 <pre><code>## [1] 0.9925</code></pre>
-<p><strong>Predict on Testing Dataset</strong> We see that the model is quite robust and the error rate is close to zero. Thus we can predict on pml_testing:</p>
+<p><strong>Predict on Testing Dataset</strong></p>
+<p>We see that the model is quite robust and the error rate is close to zero. Thus we can predict on pml_testing:</p>
 <pre class="r"><code>targetPrediction &lt;- format(predict(fitRf, pml.testing))
 targetPrediction</code></pre>
 <pre><code>##  [1] &quot;B&quot; &quot;A&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot; &quot;E&quot; &quot;D&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot; &quot;B&quot; &quot;C&quot; &quot;B&quot; &quot;A&quot; &quot;E&quot; &quot;E&quot; &quot;A&quot;
