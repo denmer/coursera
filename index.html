@@ -387,7 +387,8 @@ confusionMatrix(rfPredict, testing$classe)</code></pre>
 ## Detection Prevalence   0.2858   0.1926   0.1770   0.1615   0.1831
 ## Balanced Accuracy      0.9991   0.9935   0.9934   0.9897   0.9980</code></pre>
 <p>Now we can calculate mean accuracy:</p>
-<pre><code>mean(c(0.9947,0.9904,0.9924))</code></pre>
+<pre class="r"><code>mean(c(0.9947,0.9904,0.9924))</code></pre>
+<pre><code>## [1] 0.9925</code></pre>
 <p><strong>Predict on Testing Dataset</strong> We see that the model is quite robust and the error rate is close to zero. Thus we can predict on pml_testing:</p>
 <pre class="r"><code>targetPrediction &lt;- format(predict(fitRf, pml.testing))
 targetPrediction</code></pre>
